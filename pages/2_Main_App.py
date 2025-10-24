@@ -188,20 +188,34 @@ st.markdown('<p class="sub-header">Your AI-Powered Personalized Study Assistant<
 # Sidebar for configuration
 with st.sidebar:
     st.markdown("## ⚙️ Configuration")
-    
-    # API Key input
-    api_key = st.text_input(
-        "Gemini API Key",
-        type="password",
-        value=Config.GEMINI_API_KEY,
-        help="Get your API key from https://makersuite.google.com/app/apikey  "
-    )
-    
-    if api_key and not st.session_state.ai_engine:
-        if initialize_ai_engine(api_key):
-            st.success("✅ AI Engine initialized!")
-    
+
+    # Prefer Streamlit secrets, then OS environment
+    env_api_key = None
+    try:
+        env_api_key = st.secrets.get("GEMINI_API_KEY")
+    except Exception:
+        env_api_key = None
+    env_api_key = env_api_key or os.getenv("GEMINI_API_KEY")
+
+    # If a key is available from secrets/env, initialize silently (no value shown)
+    if env_api_key and not st.session_state.ai_engine:
+        if initialize_ai_engine(env_api_key):
+            st.success("✅ AI Engine initialized (key from environment/Streamlit Secrets).")
+            st.info("API key loaded from environment — not shown or stored in the repo.")
+
+    # If no key in environment, ask user to paste one for the current session (masked input)
+    if not env_api_key:
+        api_key_input = st.text_input(
+            "Gemini API Key (paste for this session only)",
+            type="password",
+            help="This value will not be saved to your repo. Use Streamlit Secrets for production."
+        )
+        if api_key_input and not st.session_state.ai_engine:
+            if initialize_ai_engine(api_key_input):
+                st.success("✅ AI Engine initialized for this session.")
+
     st.markdown("---")
+# ...existing code...
 
 # Main content area
 if not st.session_state.ai_engine:
